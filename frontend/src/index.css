@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100vh;
+    background-color: #060a13;
+    color: #f1f5f9;
+  }
+}
+
+/* Custom Cyberpunk / Industrial scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #060a13;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Custom CRT screen line scanning effect */
+.crt-grid {
+  background: linear-gradient(
+    rgba(18, 24, 38, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Glow effects */
+.glow-emerald {
+  box-shadow: 0 0 15px rgba(52, 211, 153, 0.15);
+}
+.glow-emerald-active {
+  box-shadow: 0 0 25px rgba(52, 211, 153, 0.35);
+}
+.glow-crimson {
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.15);
+}
+.glow-amber {
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.15);
+}
+
+/* Keyframes for blinking cursor */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 18px;
+  background-color: #34d399;
+  animation: blink 1s step-end infinite;
+  vertical-align: middle;
+}
+
+/* Custom loading animation for specs auditing */
+@keyframes audit-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.audit-scan-bar {
+  animation: audit-scan 2s linear infinite;
+}
+
+/* Custom grid dots overlay */
+.bg-dots {
+  background-image: radial-gradient(rgba(51, 65, 85, 0.15) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* Root sizing override for standard layout */
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
