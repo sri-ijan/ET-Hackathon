@@ -44,7 +44,7 @@ function Sidebar() {
 
       <div className="p-8 border-b border-slate-800">
 
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-2xl font-bold">
+        <div className="w-14 h-14 rounded-2xl bg-linear-to-r from-blue-500 to-cyan-400 flex items-center justify-center text-2xl font-bold">
 
           AI
 
