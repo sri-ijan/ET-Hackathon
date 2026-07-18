@@ -10,6 +10,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'http', 'debug']).default('info'),
   AI_SERVICE_URL: z.string().url().default('http://localhost:8001'),
+  MONGODB_URI: z.string().url().default('mongodb://localhost:27017/et_hackathon'),
 });
 
 const parseEnv = () => {

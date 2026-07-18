@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import { getAiHealth, getAiLlmStatus, postAiLlmTest } from '../controllers/ai.js';
+import { getAiHealth, getAiLlmStatus, postAiLlmTest, compareSpecs } from '../controllers/ai.js';
 import { validate } from '../middlewares/validate.js';
 import { llmTestSchema } from '../validators/aiValidator.js';
+import { uploadComplianceDocuments } from '../middlewares/upload.js';
 
 const router = Router();
 
@@ -13,5 +14,8 @@ router.get('/llm-status', getAiLlmStatus);
 
 // POST /api/v1/ai/llm-test     -> round-trip a prompt through Groq/Gemini fallback
 router.post('/llm-test', validate(llmTestSchema), postAiLlmTest);
+
+// POST /api/v1/ai/compare-specs -> upload and compare two spec files side-by-side
+router.post('/compare-specs', uploadComplianceDocuments, compareSpecs);
 
 export default router;
