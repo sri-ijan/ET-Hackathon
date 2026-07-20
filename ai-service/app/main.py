@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.core.logging_config import configure_logging
-from app.routers import health, llm_test, spec_compliance
+from app.routers import health, llm_test, spec_compliance, schedule_risk
 
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -37,6 +37,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(llm_test.router)
 app.include_router(spec_compliance.router)
+app.include_router(schedule_risk.router)
 
 
 @app.on_event("startup")

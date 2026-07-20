@@ -60,7 +60,7 @@ async def compare_specifications(
         return result
 
     except ValueError as val_err:
-        logger.error("Document parsing error: %s", val_err)
+        logger.exception("LLM spec compliance check failed")
         raise HTTPException(status_code=400, detail=str(val_err))
     except Exception as exc:
         logger.error("Spec compliance audit process failed: %s", exc, exc_info=True)

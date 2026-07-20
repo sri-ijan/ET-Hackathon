@@ -69,3 +69,9 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+print("=" * 60)
+print("Groq Key Loaded:", bool(settings.groq_api_key))
+print("Gemini Key Loaded:", bool(settings.gemini_api_key))
+print("Configured Providers:", settings.configured_providers)
+print("Primary Provider:", settings.primary_llm_provider)
+print("=" * 60)

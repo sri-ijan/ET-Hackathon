@@ -84,14 +84,21 @@ export const compareSpecifications = async (specFile, submittalFile) => {
     const { data } = await aiClient.post('/spec-compliance/compare', formData);
     return data;
   } catch (err) {
-    // If the AI service actually responded with a validation error (400) or similar, throw it
-    if (err.response && err.response.status < 500) {
-      logger.error(`AI service /spec-compliance/compare validation failed: ${JSON.stringify(err.response.data)}`);
-      throw new AppError(err.response.data?.detail || 'AI service rejected the spec compliance request.', err.response.status);
+    // If the AI service responded at all — 400 (bad input) OR 500 (LLM/logic error on its side) —
+    // that is a REAL problem to fix (usually a missing/invalid GROQ_API_KEY/GEMINI_API_KEY in
+    // ai-service/.env, or a malformed LLM response). Surface it loudly. Do NOT silently swap in
+    // mock data here — that's what was masking the actual failure before.
+    if (err.response) {
+      logger.error(`AI service /spec-compliance/compare returned ${err.response.status}: ${JSON.stringify(err.response.data)}`);
+      throw new AppError(
+        err.response.data?.detail || 'AI service rejected the spec compliance request.',
+        err.response.status
+      );
     }
 
-    // Otherwise, for connection, timeout, or server error (500/502), fall back to a high-fidelity local mock
-    logger.warn(`AI Service /spec-compliance/compare failed or is unreachable: ${err.message}. Falling back to high-fidelity local comparison mock.`);
+    // Only reach here if the AI service process is genuinely unreachable (not running / network error /
+    // timeout — no HTTP response at all). This is the one case where a demo-safety mock is justified.
+    logger.error(`AI service is UNREACHABLE at ${env.AI_SERVICE_URL}: ${err.message}. Returning a clearly-labeled local fallback so the demo doesn't hard-crash — this is NOT a real analysis.`);
 
     const specName = specFile.originalname.toLowerCase();
     let docType = 'Equipment Unit';
@@ -117,8 +124,9 @@ export const compareSpecifications = async (specFile, submittalFile) => {
     }
 
     return {
+      source: 'backend_fallback_mock',
       overall_status: 'fail',
-      summary: `Compliance audit for ${docType} (Local Demo Fallback) identified 1 critical failure (Rated Capacity) and 2 flagged warnings (Dimensions and UL Standards Listing) that require engineering validation.`,
+      summary: `⚠ AI SERVICE UNREACHABLE — this is placeholder demo data, not a real analysis of your uploaded documents. Compliance audit for ${docType} (Local Demo Fallback) identified 1 critical failure (Rated Capacity) and 2 flagged warnings (Dimensions and UL Standards Listing).`,
       parameters: [
         {
           parameter_name: 'Equipment Classification',
@@ -169,4 +177,3 @@ export const compareSpecifications = async (specFile, submittalFile) => {
     };
   }
 };
-

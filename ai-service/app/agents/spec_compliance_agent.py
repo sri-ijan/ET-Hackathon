@@ -7,53 +7,100 @@ from app.schemas.common import ParameterComparison, SpecComplianceResponse
 
 logger = logging.getLogger(__name__)
 
-# Structured LLM comparison instructions and prompt templates
-COMPLIANCE_SYSTEM_PROMPT = """You are an expert EPC Data Centre Engineering Auditor.
-Your task is to audit a Vendor Submittal Document against the Governing Specification Document.
+COMPLIANCE_SYSTEM_PROMPT = """
+You are an expert EPC Data Centre Engineering Auditor.
 
-Instructions:
-1. Extract key engineering parameters (such as rated capacity, dimensions, weight, operating temperature, material, standard compliance, voltage, efficiency) defined in the Specification.
-2. For each parameter, extract the corresponding value provided in the Vendor Submittal.
-3. Perform a side-by-side comparison:
-   - Status 'pass' if the submittal meets or exceeds the spec requirement.
-   - Status 'fail' if the submittal does not meet the spec requirement (e.g. lower capacity, incorrect dimensions, wrong material, lower efficiency).
-   - Status 'flagged' if the value is missing, ambiguous, or requires human engineering validation.
-4. For any 'fail' or 'flagged' status, write a clear, professional plain-language reason explaining the deviation.
-5. Provide the exact location (e.g. section number or page) where the parameter was found in both documents.
+Compare the Governing Specification with the Vendor Submittal.
 
-You MUST respond ONLY with a raw JSON object matching the following structure:
+Rules:
+
+1. Extract ONLY the most important engineering parameters.
+2. Prioritize:
+   - Rated Capacity
+   - Voltage
+   - Frequency
+   - Efficiency
+   - Dimensions
+   - Weight
+   - Protection Rating
+   - Standards
+   - Material
+   - Battery
+   - Monitoring
+   - Communication
+   - Cooling
+   - Environmental Limits
+   - Warranty
+
+3. Return AT MOST 20 parameters.
+
+4. ALWAYS include every FAIL and FLAGGED parameter.
+
+5. If there are remaining slots, include PASS parameters until the total reaches 20.
+
+6. Never invent values.
+
+7. If a value cannot be found:
+   - status = "flagged"
+   - deviation_reason = "Information not found in vendor submittal."
+
+8. Locations should be approximate if exact pages are unavailable.
+
+9. Return VALID JSON ONLY.
+
+10. Do NOT wrap JSON inside ```json blocks.
+
+11. Every object inside "parameters" MUST use EXACTLY these field names — do not
+    rename, abbreviate, or substitute any of them:
+    - "parameter_name"        (string)
+    - "specification_value"   (string)
+    - "submittal_value"       (string)
+    - "status"                (string: "pass", "fail", or "flagged")
+    - "deviation_reason"      (string, or null if status is "pass")
+    - "location_in_spec"      (string, or null if unknown)
+    - "location_in_submittal" (string, or null if unknown)
+
+Return exactly this shape (this is a complete, valid example — match it precisely):
+
 {
-  "overall_status": "fail",
-  "summary": "Overall summary of the compliance audit...",
+  "overall_status": "flagged",
+  "summary": "One-paragraph plain-language summary of the audit findings.",
   "parameters": [
     {
       "parameter_name": "Rated Capacity",
-      "specification_value": "500 kW",
-      "submittal_value": "400 kW",
+      "specification_value": "800 kVA",
+      "submittal_value": "750 kVA",
       "status": "fail",
-      "deviation_reason": "Vendor submittal specifies 400 kW, which falls short of the 500 kW required by the specification.",
-      "location_in_spec": "Section 4.2.1, Page 15",
-      "location_in_submittal": "Section 2.1, Page 4"
+      "deviation_reason": "Proposed capacity is below the 800 kVA required in the specification.",
+      "location_in_spec": "Section 2, Page 1",
+      "location_in_submittal": "Section 1, Page 1"
     }
   ]
 }
 """
 
-COMPLIANCE_USER_PROMPT_TEMPLATE = """Governing Specification Document Content:
-=========================================
+
+COMPLIANCE_USER_PROMPT_TEMPLATE = """
+Governing Specification Document
+================================
 {spec_text}
-=========================================
 
-Vendor Submittal Document Content:
-=========================================
+Vendor Submittal Document
+================================
 {submittal_text}
-=========================================
 
-Perform the compliance check and return the JSON object.
+Compare these documents according to the system instructions.
+
+Return ONLY valid JSON.
 """
 
-
-def generate_mock_comparison(spec_text: str, submittal_text: str) -> SpecComplianceResponse:
+def _unused_generate_mock_comparison(spec_text: str, submittal_text: str) -> SpecComplianceResponse:
+    """
+    NOT CALLED ANYWHERE. Left here only as reference for what a mock response used to
+    look like — this is exactly what was silently reaching the frontend before, coming
+    from the Node backend's OWN separate copy of this same mock (backend/src/services/aiService.js),
+    not from here. This function itself was already dead code.
+    """
     """
     Generates a realistic Spec Compliance check output.
     Contains at least one intentional mismatch to satisfy live demo acceptance criteria.
@@ -137,6 +184,46 @@ def generate_mock_comparison(spec_text: str, submittal_text: str) -> SpecComplia
     return SpecComplianceResponse(overall_status="fail", summary=summary, parameters=parameters)
 
 
+_PARAMETER_KEY_ALIASES = {
+    "parameter_name": ["parameter_name", "name", "parameter", "field", "field_name"],
+    "specification_value": ["specification_value", "spec_value", "specification", "required_value", "spec"],
+    "submittal_value": ["submittal_value", "vendor_value", "submitted_value", "submittal", "proposed_value", "value"],
+    "status": ["status", "compliance_status", "result"],
+    "deviation_reason": ["deviation_reason", "reason", "notes", "comment", "explanation"],
+    "location_in_spec": ["location_in_spec", "spec_location", "spec_page", "location_spec"],
+    "location_in_submittal": ["location_in_submittal", "submittal_location", "submittal_page", "location_submittal"],
+}
+
+
+def _normalize_parameter(raw: dict) -> dict:
+    """
+    Defensive repair layer for free-tier LLM output drift. Even with an explicit schema
+    in the prompt, smaller/free models occasionally rename a key (e.g. "name" instead of
+    "parameter_name"). Rather than letting one bad key crash the entire audit with a
+    Pydantic validation error, map known aliases onto the expected field names and fill
+    safe defaults for anything still missing.
+    """
+    normalized = {}
+    for expected_key, aliases in _PARAMETER_KEY_ALIASES.items():
+        value = None
+        for alias in aliases:
+            if alias in raw and raw[alias] not in (None, ""):
+                value = raw[alias]
+                break
+        normalized[expected_key] = value
+
+    if not normalized["parameter_name"]:
+        normalized["parameter_name"] = "Unnamed Parameter"
+    if not normalized["specification_value"]:
+        normalized["specification_value"] = "Not specified"
+    if not normalized["submittal_value"]:
+        normalized["submittal_value"] = "Not provided"
+    status = str(normalized["status"] or "flagged").strip().lower()
+    normalized["status"] = status if status in ("pass", "fail", "flagged") else "flagged"
+
+    return normalized
+
+
 async def compare_specifications_logic(spec_text: str, submittal_text: str) -> SpecComplianceResponse:
     """
     Core Spec Compliance comparison logic.
@@ -145,8 +232,7 @@ async def compare_specifications_logic(spec_text: str, submittal_text: str) -> S
     """
     # Check if we have active LLM providers configured
     if not settings.configured_providers:
-        logger.info("No LLM API keys configured in .env. Falling back to high-fidelity mock comparison.")
-        return generate_mock_comparison(spec_text, submittal_text)
+        raise RuntimeError("No AI provider configured. Check your .env (GROQ_API_KEY/GEMINI_API_KEY).")
 
     # Context truncation if documents are very long
     max_char_len = 15000  # fits well within token limits for Groq/Gemini fallbacks
@@ -162,7 +248,13 @@ async def compare_specifications_logic(spec_text: str, submittal_text: str) -> S
 
     try:
         logger.info("Running LLM spec compliance audit...")
-        result = await llm_client.generate(prompt=prompt, system=COMPLIANCE_SYSTEM_PROMPT, temperature=0.1, max_tokens=2048)
+        result = await llm_client.generate(
+    prompt=prompt,
+    system=COMPLIANCE_SYSTEM_PROMPT,
+    temperature=0.1,
+    max_tokens=3072,
+)
+        logger.info(result.text)
 
         # Parse output JSON
         # Standardize JSON extraction in case model wrapped it in markdown codeblocks
@@ -173,12 +265,18 @@ async def compare_specifications_logic(spec_text: str, submittal_text: str) -> S
             raw_text = raw_text.split("```", 1)[0]
         raw_text = raw_text.strip()
 
+        logger.info("Output length: %d", len(raw_text))
+
+        if not raw_text.endswith("}"):
+            raise ValueError("LLM response is incomplete (truncated JSON).")        
+        
         parsed_data = json.loads(raw_text)
+        parsed_data["source"] = "live_llm"  # authoritative — never trust a source field from model output
+        parsed_data["parameters"] = [_normalize_parameter(p) for p in parsed_data.get("parameters", [])]
 
         # Map to Pydantic Response Schema to enforce types & shapes
         return SpecComplianceResponse(**parsed_data)
 
-    except Exception as e:
-        logger.error("LLM spec compliance check failed: %s. Falling back to mock comparison.", e)
-        # Fall back to high-fidelity mock to keep the system operational
-        return generate_mock_comparison(spec_text, submittal_text)
+    except Exception:
+     logger.exception("Spec compliance failed")
+     raise

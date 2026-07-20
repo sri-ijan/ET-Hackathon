@@ -40,4 +40,38 @@ class SpecComplianceResponse(BaseModel):
     overall_status: str = Field(..., description="Overall compliance status: 'pass', 'fail', or 'flagged'")
     summary: str = Field(..., description="High-level text summary of the comparison and deviation flags")
     parameters: list[ParameterComparison] = Field(..., description="Detailed side-by-side parameter list")
+    source: str = Field(
+        default="live_llm",
+        description="'live_llm' for a real model call. Never set anything else here — "
+        "this service should fail loudly (HTTP error) instead of returning canned data.",
+    )
 
+
+class ScheduleTask(BaseModel):
+    """One row of a parsed schedule CSV."""
+    task_id: str
+    task_name: str
+    start_date: str  # ISO date string (YYYY-MM-DD)
+    end_date: str
+    dependency_id: str | None = None
+    percent_complete: float = Field(..., ge=0, le=100)
+
+
+class TaskRiskAssessment(BaseModel):
+    task_id: str
+    task_name: str
+    end_date: str
+    percent_complete: float
+    risk_score: int = Field(..., ge=0, le=100, description="0 = no risk, 100 = critical/certain delay")
+    risk_level: str = Field(..., description="'low', 'medium', 'high', or 'critical'")
+    risk_reason: str = Field(..., description="Plain-language explanation of why this task is at risk")
+    has_downstream_dependents: bool = Field(default=False, description="True if other tasks depend on this one")
+
+
+class ScheduleRiskResponse(BaseModel):
+    as_of_date: str
+    total_tasks: int
+    flagged_tasks: int
+    overall_project_risk: str = Field(..., description="'low', 'medium', 'high', or 'critical'")
+    summary: str
+    ranked_risks: list[TaskRiskAssessment] = Field(..., description="At-risk tasks, ranked highest risk first")

@@ -87,6 +87,21 @@ function SpecCompliance() {
         </div>
       </section>
 
+      {/* Mock/fallback warning - only true if the AI service was unreachable */}
+      {report && report.source && report.source !== "live_llm" && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 flex items-start gap-4 text-amber-900">
+          <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={24} />
+          <div>
+            <h4 className="font-bold text-lg">This is placeholder data, not a real analysis</h4>
+            <p className="text-sm mt-1">
+              The AI service was unreachable, so the backend returned demo fallback data instead of
+              analyzing your actual documents. Check that the ai-service is running and that GROQ_API_KEY
+              or GEMINI_API_KEY is set in its .env file, then try again.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Stats - Rendered dynamically when a report is loaded */}
       {report && (
         <section className="grid lg:grid-cols-3 gap-6 animate-fade-in">
@@ -198,4 +213,4 @@ function SpecCompliance() {
   );
 }
 
-export default SpecCompliance;
+export default SpecCompliance;

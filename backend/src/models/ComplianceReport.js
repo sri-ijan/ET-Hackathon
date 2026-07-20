@@ -51,6 +51,11 @@ const complianceReportSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    source: {
+      type: String,
+      enum: ['live_llm', 'backend_fallback_mock'],
+      default: 'live_llm',
+    },
     parameters: [parameterComparisonSchema],
   },
   {

@@ -36,6 +36,7 @@ export const compareSpecs = catchAsync(async (req, res, next) => {
     submittalFileName: submittalFile.originalname,
     overallStatus: data.overall_status,
     summary: data.summary,
+    source: data.source || 'live_llm',
     parameters: data.parameters.map((p) => ({
       parameterName: p.parameter_name,
       specificationValue: p.specification_value,
@@ -52,4 +53,3 @@ export const compareSpecs = catchAsync(async (req, res, next) => {
     data: report,
   });
 });
-

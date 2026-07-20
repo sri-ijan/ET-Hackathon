@@ -1,0 +1,11 @@
+task_id,task_name,start_date,end_date,dependency_id,percent_complete
+T-001,Site Mobilization & Civil Works,2026-03-01,2026-04-15,,100
+T-002,Substation Civil & Foundation,2026-04-01,2026-05-15,T-001,100
+T-003,Transformer Procurement & Delivery,2026-04-15,2026-06-01,T-001,90
+T-004,Transformer Installation & Testing,2026-06-01,2026-06-30,T-003,40
+T-005,UPS Installation & Commissioning,2026-07-01,2026-07-25,T-004,10
+T-006,Generator Installation,2026-06-15,2026-07-10,T-001,100
+T-007,Cooling System Installation,2026-06-20,2026-07-20,T-002,70
+T-008,Fire Suppression Installation,2026-07-01,2026-08-05,T-002,20
+T-009,Electrical Testing & Commissioning,2026-07-26,2026-08-15,T-005,0
+T-010,BMS Integration & Final Handover,2026-08-10,2026-08-31,T-009,0
