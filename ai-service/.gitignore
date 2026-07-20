@@ -1,5 +1,9 @@
 .env
 .env.local
+<<<<<<< HEAD
+=======
+chroma_data/
+>>>>>>> d243e42 (RAG pipeline sorted)
 __pycache__/
 *.pyc
 .venv/

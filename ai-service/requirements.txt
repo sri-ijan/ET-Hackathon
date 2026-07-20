@@ -1,13 +1,19 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
+<<<<<<< HEAD
 pydantic==2.10.4
 pydantic-settings==2.7.1
+=======
+pydantic>=2.12,<3.0
+pydantic-settings>=2.7,<3.0
+>>>>>>> d243e42 (RAG pipeline sorted)
 python-dotenv==1.0.1
 
 # LLM providers
 groq==0.15.0
 google-genai==1.2.0
 
+<<<<<<< HEAD
 # Added in later phases (RAG / document ingestion) — kept here so Day 4-5
 # doesn't need a second requirements pass:
 # langchain==0.3.14
@@ -16,3 +22,10 @@ google-genai==1.2.0
 pypdf==5.1.0
 python-docx==1.1.2
 python-multipart==0.0.12
+=======
+# RAG / document ingestion (RFI Copilot)
+chromadb==0.5.23
+pypdf==5.1.0
+python-docx==1.1.2
+python-multipart==0.0.12
+>>>>>>> d243e42 (RAG pipeline sorted)

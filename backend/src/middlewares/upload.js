@@ -33,3 +33,9 @@ export const uploadComplianceDocuments = upload.fields([
   { name: 'specification', maxCount: 1 },
   { name: 'submittal', maxCount: 1 },
 ]);
+<<<<<<< HEAD
+=======
+
+// Single-file upload for RFI Copilot document ingestion
+export const uploadRfiDocument = upload.single('document');
+>>>>>>> d243e42 (RAG pipeline sorted)

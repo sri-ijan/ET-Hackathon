@@ -74,4 +74,28 @@ class ScheduleRiskResponse(BaseModel):
     flagged_tasks: int
     overall_project_risk: str = Field(..., description="'low', 'medium', 'high', or 'critical'")
     summary: str
+<<<<<<< HEAD
     ranked_risks: list[TaskRiskAssessment] = Field(..., description="At-risk tasks, ranked highest risk first")
+=======
+    ranked_risks: list[TaskRiskAssessment] = Field(..., description="At-risk tasks, ranked highest risk first")
+
+
+class RFIIngestResponse(BaseModel):
+    filename: str
+    chunks_added: int
+    total_chunks_in_corpus: int
+
+
+class RFICitation(BaseModel):
+    source_filename: str
+    chunk_index: int
+    excerpt: str = Field(..., description="Short snippet of the cited chunk, for display")
+    similarity: float
+
+
+class RFIAskResponse(BaseModel):
+    question: str
+    answer: str
+    citations: list[RFICitation]
+    source: str = Field(default="live_llm")
+>>>>>>> d243e42 (RAG pipeline sorted)

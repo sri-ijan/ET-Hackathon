@@ -1,6 +1,12 @@
 import { catchAsync } from '../utils/catchAsync.js';
+<<<<<<< HEAD
 import { checkAiHealth, checkAiLlmStatus, testAiLlm, compareSpecifications } from '../services/aiService.js';
 import { ComplianceReport } from '../models/ComplianceReport.js';
+=======
+import { checkAiHealth, checkAiLlmStatus, testAiLlm, compareSpecifications, ingestRfiDocument, askRfiCopilot, getRfiCorpusStats } from '../services/aiService.js';
+import { ComplianceReport } from '../models/ComplianceReport.js';
+import { RFIQuery } from '../models/RFIQuery.js';
+>>>>>>> d243e42 (RAG pipeline sorted)
 import { AppError } from '../utils/AppError.js';
 
 export const getAiHealth = catchAsync(async (req, res) => {
@@ -52,4 +58,44 @@ export const compareSpecs = catchAsync(async (req, res, next) => {
     status: 'success',
     data: report,
   });
+<<<<<<< HEAD
+=======
+});
+
+export const ingestRfi = catchAsync(async (req, res, next) => {
+  if (!req.file) {
+    return next(new AppError('Please upload a document to ingest.', 400));
+  }
+  const data = await ingestRfiDocument(req.file);
+  res.status(201).json({ status: 'success', data });
+});
+
+export const askRfi = catchAsync(async (req, res, next) => {
+  const { question } = req.body;
+  if (!question || !question.trim()) {
+    return next(new AppError('Question cannot be empty.', 400));
+  }
+
+  const data = await askRfiCopilot(question);
+
+  // Log every Q&A — useful history for the RFI page, and future Exec Summary context.
+  const saved = await RFIQuery.create({
+    question: data.question,
+    answer: data.answer,
+    citations: (data.citations || []).map((c) => ({
+      sourceFilename: c.source_filename,
+      chunkIndex: c.chunk_index,
+      excerpt: c.excerpt,
+      similarity: c.similarity,
+    })),
+    source: data.source || 'live_llm',
+  });
+
+  res.status(200).json({ status: 'success', data: saved });
+});
+
+export const getRfiStats = catchAsync(async (req, res) => {
+  const data = await getRfiCorpusStats();
+  res.status(200).json({ status: 'success', data });
+>>>>>>> d243e42 (RAG pipeline sorted)
 });

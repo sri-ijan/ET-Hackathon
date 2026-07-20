@@ -176,4 +176,62 @@ export const compareSpecifications = async (specFile, submittalFile) => {
       ],
     };
   }
+<<<<<<< HEAD
+=======
+};
+
+/**
+ * Forwards a document to the AI service's RFI corpus (chunk + embed + store in Chroma).
+ * No mock fallback here — ingestion either works or fails loudly. Silently pretending
+ * to ingest a document that never actually got embedded would corrupt the demo corpus
+ * invisibly, which is worse than a visible error.
+ * @param {Object} docFile - Multer file object
+ */
+export const ingestRfiDocument = async (docFile) => {
+  try {
+    const formData = new FormData();
+    const blob = new Blob([docFile.buffer], { type: docFile.mimetype });
+    formData.append('document', blob, docFile.originalname);
+
+    const { data } = await aiClient.post('/rfi-copilot/ingest', formData);
+    return data;
+  } catch (err) {
+    if (err.response) {
+      logger.error(`AI service /rfi-copilot/ingest failed: ${JSON.stringify(err.response.data)}`);
+      throw new AppError(err.response.data?.detail || 'AI service rejected the RFI document.', err.response.status);
+    }
+    logger.error(`AI service unreachable for RFI ingest: ${err.message}`);
+    throw new AppError('AI service is unreachable. Is it running on ' + env.AI_SERVICE_URL + '?', 502);
+  }
+};
+
+/**
+ * Asks a question against the ingested RFI corpus (RAG: retrieval + cited LLM answer).
+ * @param {string} question
+ */
+export const askRfiCopilot = async (question) => {
+  try {
+    const formData = new FormData();
+    formData.append('question', question);
+    const { data } = await aiClient.post('/rfi-copilot/ask', formData);
+    return data;
+  } catch (err) {
+    if (err.response) {
+      logger.error(`AI service /rfi-copilot/ask failed: ${JSON.stringify(err.response.data)}`);
+      throw new AppError(err.response.data?.detail || 'AI service rejected the question.', err.response.status);
+    }
+    logger.error(`AI service unreachable for RFI ask: ${err.message}`);
+    throw new AppError('AI service is unreachable. Is it running on ' + env.AI_SERVICE_URL + '?', 502);
+  }
+};
+
+export const getRfiCorpusStats = async () => {
+  try {
+    const { data } = await aiClient.get('/rfi-copilot/corpus-stats');
+    return data;
+  } catch (err) {
+    logger.error(`AI service /rfi-copilot/corpus-stats failed: ${err.message}`);
+    throw new AppError('Could not reach RFI corpus stats endpoint.', 502);
+  }
+>>>>>>> d243e42 (RAG pipeline sorted)
 };
