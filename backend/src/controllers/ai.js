@@ -1,12 +1,11 @@
 import { catchAsync } from '../utils/catchAsync.js';
-<<<<<<< HEAD
 import { checkAiHealth, checkAiLlmStatus, testAiLlm, compareSpecifications } from '../services/aiService.js';
 import { ComplianceReport } from '../models/ComplianceReport.js';
-=======
+
 import { checkAiHealth, checkAiLlmStatus, testAiLlm, compareSpecifications, ingestRfiDocument, askRfiCopilot, getRfiCorpusStats } from '../services/aiService.js';
 import { ComplianceReport } from '../models/ComplianceReport.js';
 import { RFIQuery } from '../models/RFIQuery.js';
->>>>>>> d243e42 (RAG pipeline sorted)
+
 import { AppError } from '../utils/AppError.js';
 
 export const getAiHealth = catchAsync(async (req, res) => {
@@ -58,8 +57,7 @@ export const compareSpecs = catchAsync(async (req, res, next) => {
     status: 'success',
     data: report,
   });
-<<<<<<< HEAD
-=======
+
 });
 
 export const ingestRfi = catchAsync(async (req, res, next) => {
@@ -97,5 +95,5 @@ export const askRfi = catchAsync(async (req, res, next) => {
 export const getRfiStats = catchAsync(async (req, res) => {
   const data = await getRfiCorpusStats();
   res.status(200).json({ status: 'success', data });
->>>>>>> d243e42 (RAG pipeline sorted)
+
 });
