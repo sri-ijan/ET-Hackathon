@@ -6,10 +6,16 @@ const storage = multer.memoryStorage();
 
 // File filter: accept only PDF and Word (.docx, .doc) files
 const fileFilter = (req, file, cb) => {
+   console.log(file.originalname);
+  console.log(file.mimetype);
+
   const allowedMimeTypes = [
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/msword',
+     "text/csv",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
@@ -38,3 +44,5 @@ export const uploadComplianceDocuments = upload.fields([
 // Single-file upload for RFI Copilot document ingestion
 export const uploadRfiDocument = upload.single('document');
 
+// Upload middleware for Schedule Risk Radar
+export const uploadScheduleFile = upload.single("schedule");

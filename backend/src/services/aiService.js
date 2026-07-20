@@ -235,3 +235,92 @@ export const getRfiCorpusStats = async () => {
   }
 // >>>>>>> d243e42 (RAG pipeline sorted)
 };
+
+
+/**
+ * Sends a project schedule (CSV/XLS/XLSX) to the AI service
+ * for Schedule Risk Radar analysis.
+ */
+export const analyzeSchedule = async (scheduleFile) => {
+  try {
+    const formData = new FormData();
+
+    const scheduleBlob = new Blob([scheduleFile.buffer], {
+      type: scheduleFile.mimetype,
+    });
+
+    formData.append(
+      "schedule",
+      scheduleBlob,
+      scheduleFile.originalname
+    );
+
+    const { data } = await aiClient.post(
+      "/schedule-risk/analyze",
+      formData
+    );
+
+    return data;
+  } catch (err) {
+    if (err.response) {
+      logger.error(
+        `AI service /schedule-risk/analyze failed: ${JSON.stringify(
+          err.response.data
+        )}`
+      );
+
+      throw new AppError(
+        err.response.data?.detail ||
+          "AI service rejected the schedule.",
+        err.response.status
+      );
+    }
+
+    logger.error(
+      `AI service unreachable for schedule analysis: ${err.message}`
+    );
+
+    // Demo fallback
+    return {
+      source: "backend_fallback_mock",
+      overall_risk: "High",
+      summary:
+        "Schedule analysis identified multiple tasks at risk of delaying project completion.",
+
+      tasks: [
+        {
+          task_name: "Foundation Work",
+          start_date: "2026-07-01",
+          end_date: "2026-07-15",
+          dependency: "-",
+          percent_complete: 80,
+          risk_score: 20,
+          risk_reason: "Currently progressing as planned.",
+          status: "low",
+        },
+        {
+          task_name: "Electrical Installation",
+          start_date: "2026-07-16",
+          end_date: "2026-07-30",
+          dependency: "Foundation Work",
+          percent_complete: 25,
+          risk_score: 82,
+          risk_reason:
+            "Task is significantly behind schedule and blocks downstream activities.",
+          status: "high",
+        },
+        {
+          task_name: "HVAC Installation",
+          start_date: "2026-07-20",
+          end_date: "2026-08-05",
+          dependency: "Electrical Installation",
+          percent_complete: 15,
+          risk_score: 76,
+          risk_reason:
+            "Dependent on delayed electrical work. High probability of schedule slippage.",
+          status: "high",
+        },
+      ],
+    };
+  }
+};
