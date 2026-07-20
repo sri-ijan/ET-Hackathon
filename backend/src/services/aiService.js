@@ -176,8 +176,8 @@ export const compareSpecifications = async (specFile, submittalFile) => {
       ],
     };
   }
-<<<<<<< HEAD
-=======
+// <<<<<<< HEAD
+// =======
 };
 
 /**
@@ -233,5 +233,5 @@ export const getRfiCorpusStats = async () => {
     logger.error(`AI service /rfi-copilot/corpus-stats failed: ${err.message}`);
     throw new AppError('Could not reach RFI corpus stats endpoint.', 502);
   }
->>>>>>> d243e42 (RAG pipeline sorted)
+// >>>>>>> d243e42 (RAG pipeline sorted)
 };
