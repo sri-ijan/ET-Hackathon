@@ -1,5 +1,0 @@
-Task Name,Start Date,End Date,Dependency,Percent Complete
-Foundation,2026-07-01,2026-07-10,,100
-Electrical,2026-07-11,2026-07-20,Foundation,40
-HVAC,2026-07-18,2026-07-28,Electrical,20
-Testing,2026-07-29,2026-08-05,HVAC,0

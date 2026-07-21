@@ -1,0 +1,5 @@
+task_id,task_name,start_date,end_date,dependency_id,percent_complete
+T-001,Foundation,2026-07-01,2026-07-10,,100
+T-002,Electrical,2026-07-11,2026-07-20,T-001,40
+T-003,HVAC,2026-07-18,2026-07-28,T-002,20
+T-004,Testing,2026-07-29,2026-08-05,T-003,0
