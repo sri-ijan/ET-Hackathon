@@ -1,12 +1,9 @@
 import { catchAsync } from "../utils/catchAsync.js";
 import { AppError } from "../utils/AppError.js";
-import { analyzeSchedule } from "../services/aiService.js";
+import { analyzeSchedule as analyzeScheduleRisk } from "../services/aiService.js";
 import { ScheduleAnalysis } from "../models/ScheduleAnalysis.js";
 
 export const uploadSchedule = catchAsync(async (req, res, next) => {
-    console.log("BODY:", req.body);
-  console.log("FILE:", req.file);
-  console.log(req.headers["content-type"]);
   if (!req.file) {
     return next(
       new AppError(
@@ -16,50 +13,36 @@ export const uploadSchedule = catchAsync(async (req, res, next) => {
     );
   }
 
-  const data = await analyzeSchedule(req.file);
+  const { as_of_date } = req.body;
+
+  const data = await analyzeScheduleRisk(req.file, as_of_date);
 
   const analysis = await ScheduleAnalysis.create({
     fileName: req.file.originalname,
 
-    overallRisk:
-      data.overall_risk || data.overallRisk || "Medium",
 
-    summary:
-      data.summary || "",
+    source: data.source || "live_llm",
 
-    source:
-      data.source || "live_llm",
+    asOfDate: data.as_of_date,
 
-    tasks: (data.tasks || []).map((task) => ({
-      taskName:
-        task.task_name || task.taskName,
+    totalTasks: data.total_tasks,
 
-      startDate:
-        task.start_date || task.startDate,
+    flaggedTasks: data.flagged_tasks,
 
-      endDate:
-        task.end_date || task.endDate,
+    overallProjectRisk: data.overall_project_risk,
 
-      dependency:
-        task.dependency || "",
+    summary: data.summary || "",
 
-      percentComplete:
-        task.percent_complete ||
-        task.percentComplete ||
-        0,
+    rankedRisks: (data.ranked_risks || []).map((task) => ({
+      taskId: task.task_id,
+      taskName: task.task_name,
+      endDate: task.end_date,
+      percentComplete: task.percent_complete,
+      riskScore: task.risk_score,
+      riskLevel: task.risk_level,
+      riskReason: task.risk_reason,
+      hasDownstreamDependents: task.has_downstream_dependents,
 
-      riskScore:
-        task.risk_score ||
-        task.riskScore ||
-        0,
-
-      riskReason:
-        task.risk_reason ||
-        task.riskReason ||
-        "",
-
-      status:
-        task.status || "low",
     })),
   });
 

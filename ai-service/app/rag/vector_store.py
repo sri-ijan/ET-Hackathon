@@ -1,72 +1,104 @@
 """
-Thin wrapper around a local Chroma collection for the RFI Knowledge Copilot.
+Lightweight vector store for the RFI Knowledge Copilot — pure Python + numpy,
+zero compiled/native dependencies.
 
-Uses a PersistentClient (writes to ./chroma_data) so the seeded corpus survives
-server restarts during rehearsal — you don't want to re-ingest documents every
-time uvicorn --reload restarts.
+Why not Chroma: chromadb pulls in chroma-hnswlib, a C++ extension with no
+prebuilt wheel for every Python/OS combo (hit this exact build failure twice
+on Windows — requires Visual Studio Build Tools to compile from source).
+At hackathon scale (tens to low hundreds of chunks), brute-force cosine
+similarity over an in-memory numpy array is sub-millisecond and needs nothing
+beyond numpy, which ships prebuilt wheels for every platform. Simpler, faster
+to set up, and one less thing that can break on a teammate's laptop.
+
+Persistence: a single JSON file on disk (./rfi_corpus_store.json), so the
+seeded corpus survives server restarts during rehearsal.
 """
 
+import json
 import logging
+import os
 import uuid
 
-import chromadb
+import numpy as np
 
 from app.ingestion.chunker import Chunk
 
 logger = logging.getLogger(__name__)
 
-COLLECTION_NAME = "rfi_corpus"
-_client = None
-_collection = None
+STORE_PATH = "./rfi_corpus_store.json"
+
+_records: list[dict] | None = None  # each: {id, text, source_filename, chunk_index, embedding}
 
 
-def _get_collection():
-    global _client, _collection
-    if _collection is None:
-        _client = chromadb.PersistentClient(path="./chroma_data")
-        _collection = _client.get_or_create_collection(name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"})
-    return _collection
+def _load() -> list[dict]:
+    global _records
+    if _records is None:
+        if os.path.exists(STORE_PATH):
+            with open(STORE_PATH, "r", encoding="utf-8") as f:
+                _records = json.load(f)
+            logger.info("Loaded RFI corpus from disk: %d chunks", len(_records))
+        else:
+            _records = []
+    return _records
+
+
+def _save() -> None:
+    with open(STORE_PATH, "w", encoding="utf-8") as f:
+        json.dump(_records, f)
 
 
 def add_chunks(chunks: list[Chunk], embeddings: list[list[float]]) -> int:
     if not chunks:
         return 0
-    collection = _get_collection()
-    ids = [str(uuid.uuid4()) for _ in chunks]
-    documents = [c.text for c in chunks]
-    metadatas = [{"source_filename": c.source_filename, "chunk_index": c.chunk_index} for c in chunks]
-    collection.add(ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas)
-    logger.info("Added %d chunks to RFI corpus (total now: %d)", len(chunks), collection.count())
+    records = _load()
+    for chunk, embedding in zip(chunks, embeddings):
+        records.append({
+            "id": str(uuid.uuid4()),
+            "text": chunk.text,
+            "source_filename": chunk.source_filename,
+            "chunk_index": chunk.chunk_index,
+            "embedding": embedding,
+        })
+    _save()
+    logger.info("Added %d chunks to RFI corpus (total now: %d)", len(chunks), len(records))
     return len(chunks)
 
 
 def query(query_embedding: list[float], top_k: int = 5) -> list[dict]:
-    collection = _get_collection()
-    if collection.count() == 0:
+    records = _load()
+    if not records:
         return []
-    top_k = min(top_k, collection.count())
-    results = collection.query(query_embeddings=[query_embedding], n_results=top_k)
+
+    matrix = np.array([r["embedding"] for r in records], dtype=np.float32)
+    q = np.array(query_embedding, dtype=np.float32)
+
+    matrix_norms = np.linalg.norm(matrix, axis=1)
+    q_norm = np.linalg.norm(q)
+    denom = matrix_norms * q_norm
+    denom[denom == 0] = 1e-10
+    similarities = (matrix @ q) / denom
+
+    top_k = min(top_k, len(records))
+    top_indices = np.argsort(-similarities)[:top_k]
 
     hits = []
-    for doc, meta, dist in zip(results["documents"][0], results["metadatas"][0], results["distances"][0]):
+    for idx in top_indices:
+        r = records[int(idx)]
         hits.append({
-            "text": doc,
-            "source_filename": meta["source_filename"],
-            "chunk_index": meta["chunk_index"],
-            "similarity": round(1 - dist, 4),  # cosine distance -> similarity
+            "text": r["text"],
+            "source_filename": r["source_filename"],
+            "chunk_index": r["chunk_index"],
+            "similarity": round(float(similarities[idx]), 4),
         })
     return hits
 
 
 def corpus_stats() -> dict:
-    collection = _get_collection()
-    return {"total_chunks": collection.count()}
+    return {"total_chunks": len(_load())}
 
 
 def clear_corpus() -> None:
     """Wipes the whole corpus. Useful for demo resets / re-seeding with fresh test docs."""
-    global _client, _collection
-    if _client is None:
-        _get_collection()
-    _client.delete_collection(COLLECTION_NAME)
-    _collection = _client.get_or_create_collection(name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"})
+    global _records
+    _records = []
+    _save()

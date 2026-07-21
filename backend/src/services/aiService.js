@@ -176,8 +176,7 @@ export const compareSpecifications = async (specFile, submittalFile) => {
       ],
     };
   }
-// <<<<<<< HEAD
-// =======
+
 };
 
 /**
@@ -233,7 +232,7 @@ export const getRfiCorpusStats = async () => {
     logger.error(`AI service /rfi-copilot/corpus-stats failed: ${err.message}`);
     throw new AppError('Could not reach RFI corpus stats endpoint.', 502);
   }
-// >>>>>>> d243e42 (RAG pipeline sorted)
+
 };
 
 
@@ -241,7 +240,9 @@ export const getRfiCorpusStats = async () => {
  * Sends a project schedule (CSV/XLS/XLSX) to the AI service
  * for Schedule Risk Radar analysis.
  */
-export const analyzeSchedule = async (scheduleFile) => {
+
+export const analyzeSchedule = async (scheduleFile, asOfDate) => {
+
   try {
     const formData = new FormData();
 
@@ -255,6 +256,8 @@ export const analyzeSchedule = async (scheduleFile) => {
       scheduleFile.originalname
     );
 
+    if (asOfDate) formData.append("as_of_date", asOfDate);
+
     const { data } = await aiClient.post(
       "/schedule-risk/analyze",
       formData
@@ -262,6 +265,14 @@ export const analyzeSchedule = async (scheduleFile) => {
 
     return data;
   } catch (err) {
+
+
+    // No mock fallback here — same reasoning as compareSpecifications above: a
+    // masked failure during rehearsal is worse than a visible one. The old fallback
+    // also returned a stale response shape (tasks[]) that no longer matches what
+    // the AI service actually returns (ranked_risks[]), so it would have silently
+    // corrupted saved reports even in "fallback" mode.
+
     if (err.response) {
       logger.error(
         `AI service /schedule-risk/analyze failed: ${JSON.stringify(
@@ -280,47 +291,27 @@ export const analyzeSchedule = async (scheduleFile) => {
       `AI service unreachable for schedule analysis: ${err.message}`
     );
 
-    // Demo fallback
-    return {
-      source: "backend_fallback_mock",
-      overall_risk: "High",
-      summary:
-        "Schedule analysis identified multiple tasks at risk of delaying project completion.",
+    throw new AppError('AI service is unreachable. Is it running on ' + env.AI_SERVICE_URL + '?', 502);
+  }
+};
 
-      tasks: [
-        {
-          task_name: "Foundation Work",
-          start_date: "2026-07-01",
-          end_date: "2026-07-15",
-          dependency: "-",
-          percent_complete: 80,
-          risk_score: 20,
-          risk_reason: "Currently progressing as planned.",
-          status: "low",
-        },
-        {
-          task_name: "Electrical Installation",
-          start_date: "2026-07-16",
-          end_date: "2026-07-30",
-          dependency: "Foundation Work",
-          percent_complete: 25,
-          risk_score: 82,
-          risk_reason:
-            "Task is significantly behind schedule and blocks downstream activities.",
-          status: "high",
-        },
-        {
-          task_name: "HVAC Installation",
-          start_date: "2026-07-20",
-          end_date: "2026-08-05",
-          dependency: "Electrical Installation",
-          percent_complete: 15,
-          risk_score: 76,
-          risk_reason:
-            "Dependent on delayed electrical work. High probability of schedule slippage.",
-          status: "high",
-        },
-      ],
-    };
+/**
+ * Asks the AI service to synthesize an executive summary from the latest Modules 1-3 outputs.
+ * The backend (not the AI service) is responsible for gathering "latest" data from MongoDB
+ * and passing it in — the AI service itself has no DB access, by design.
+ * @param {Object} payload - { compliance_summary, compliance_flag_count, schedule_summary, schedule_overall_risk, recent_rfi_questions }
+ */
+export const generateExecutiveSummary = async (payload) => {
+  try {
+    const { data } = await aiClient.post('/exec-summary/generate', payload);
+    return data;
+  } catch (err) {
+    if (err.response) {
+      logger.error(`AI service /exec-summary/generate failed: ${JSON.stringify(err.response.data)}`);
+      throw new AppError(err.response.data?.detail || 'AI service rejected the exec summary request.', err.response.status);
+    }
+    logger.error(`AI service unreachable for exec summary: ${err.message}`);
+    throw new AppError('AI service is unreachable. Is it running on ' + env.AI_SERVICE_URL + '?', 502);
+
   }
 };

@@ -13,9 +13,7 @@ const fileFilter = (req, file, cb) => {
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/msword',
-     "text/csv",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  
   ];
 
   if (allowedMimeTypes.includes(file.mimetype)) {
@@ -40,9 +38,31 @@ export const uploadComplianceDocuments = upload.fields([
   { name: 'submittal', maxCount: 1 },
 ]);
 
-
 // Single-file upload for RFI Copilot document ingestion
 export const uploadRfiDocument = upload.single('document');
+// Parse multipart/form-data containing only text fields (no files)
+export const uploadRfiQuestion = upload.none();
+
+// Schedule CSVs need their own multer instance — the PDF/DOCX file filter above
+// would reject them, and previously CSV/Excel mimetypes were mistakenly added to
+// that shared filter, which meant a spreadsheet could also slip through as a
+// "specification" or "submittal" upload on the compare-specs endpoint. Browsers
+// are inconsistent about CSV mimetypes (text/csv, application/vnd.ms-excel, or
+// even application/octet-stream), so we check the file extension instead of
+// trusting the mimetype.
+const csvFileFilter = (req, file, cb) => {
+  if (file.originalname.toLowerCase().endsWith('.csv')) {
+    cb(null, true);
+  } else {
+    cb(new AppError(`File type not supported: ${file.originalname}. Only .csv schedule files are allowed.`, 400), false);
+  }
+};
+
+const csvUpload = multer({
+  storage,
+  fileFilter: csvFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB — schedules are small text files
+});
 
 // Upload middleware for Schedule Risk Radar
-export const uploadScheduleFile = upload.single("schedule");
+export const uploadScheduleFile = csvUpload.single('schedule');

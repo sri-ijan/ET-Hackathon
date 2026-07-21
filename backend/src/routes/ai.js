@@ -1,50 +1,41 @@
+import { Router } from "express";
 
-
-import { getAiHealth, getAiLlmStatus, postAiLlmTest, compareSpecs, ingestRfi, askRfi, getRfiStats } from '../controllers/ai.js';
-import { validate } from '../middlewares/validate.js';
-import { llmTestSchema } from '../validators/aiValidator.js';
-import { uploadComplianceDocuments, uploadRfiDocument,uploadScheduleFile } from '../middlewares/upload.js';
-import { Router } from 'express';
 import {
-  uploadSchedule,
-  getScheduleHistory,
-  getScheduleAnalysis,
-  deleteScheduleAnalysis,
-} from "../controllers/schedule.js";
+  getAiHealth,
+  getAiLlmStatus,
+  postAiLlmTest,
+  compareSpecs,
+  ingestRfi,
+  askRfi,
+  getRfiStats,
+  generateExecSummary,
+} from "../controllers/ai.js";
 
+import { validate } from "../middlewares/validate.js";
+import { llmTestSchema } from "../validators/aiValidator.js";
+
+import {
+  uploadComplianceDocuments,
+  uploadRfiDocument,
+  uploadRfiQuestion,
+} from "../middlewares/upload.js";
 
 const router = Router();
 
+// AI Service Health
+router.get("/health", getAiHealth);
+router.get("/llm-status", getAiLlmStatus);
+router.post("/llm-test", validate(llmTestSchema), postAiLlmTest);
 
-// =======
-// POST /api/v1/ai/rfi/ingest   -> add a document to the RFI knowledge corpus
-router.post('/rfi/ingest', uploadRfiDocument, ingestRfi);
+// Specification Compliance
+router.post("/compare-specs", uploadComplianceDocuments, compareSpecs);
 
-// POST /api/v1/ai/rfi/ask      -> ask a question against the ingested corpus
-router.post('/rfi/ask', askRfi);
+// RFI Copilot
+router.post("/rfi/ingest", uploadRfiDocument, ingestRfi);
+router.post("/rfi/ask", uploadRfiQuestion, askRfi);
+router.get("/rfi/stats", getRfiStats);
 
-// GET /api/v1/ai/rfi/stats     -> how many chunks are in the corpus right now
-router.get('/rfi/stats', getRfiStats);
+// Executive Summary
+router.post("/exec-summary", generateExecSummary);
 
-router.post(
-  "/schedule/upload",
-  uploadScheduleFile,
-  uploadSchedule
-);
-
-router.get(
-  "/schedule/history",
-  getScheduleHistory
-);
-
-router.get(
-  "/schedule/:id",
-  getScheduleAnalysis
-);
-
-router.delete(
-  "/schedule/:id",
-  deleteScheduleAnalysis
-);
 export default router;
-// >>>>>>> d243e42 (RAG pipeline sorted)

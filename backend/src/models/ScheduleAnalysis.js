@@ -1,27 +1,33 @@
 import mongoose from "mongoose";
 
-const taskSchema = new mongoose.Schema({
+const taskRiskSchema = new mongoose.Schema({
+  taskId: {
+    type: String,
+    required: true,
+  },
+
   taskName: {
     type: String,
     required: true,
   },
 
-  startDate: Date,
-
-  endDate: Date,
-
-  dependency: String,
+  endDate: String,
 
   percentComplete: Number,
 
   riskScore: Number,
 
+  riskLevel: {
+    type: String,
+    enum: ["low", "medium", "high", "critical"],
+    default: "low",
+  },
+
   riskReason: String,
 
-  status: {
-    type: String,
-    enum: ["low", "medium", "high"],
-    default: "low",
+  hasDownstreamDependents: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -37,16 +43,23 @@ const scheduleAnalysisSchema = new mongoose.Schema(
       default: "live_llm",
     },
 
-    overallRisk: {
+    asOfDate: String,
+
+    totalTasks: Number,
+
+    flaggedTasks: Number,
+
+    overallProjectRisk: {
       type: String,
-      default: "Low",
+      enum: ["low", "medium", "high", "critical"],
+      default: "low",
     },
 
     summary: {
       type: String,
     },
 
-    tasks: [taskSchema],
+    rankedRisks: [taskRiskSchema],
   },
   {
     timestamps: true,

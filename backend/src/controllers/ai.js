@@ -1,11 +1,18 @@
 import { catchAsync } from '../utils/catchAsync.js';
-// import { checkAiHealth, checkAiLlmStatus, testAiLlm, compareSpecifications } from '../services/aiService.js';
-// import { ComplianceReport } from '../models/ComplianceReport.js';
-
-import { checkAiHealth, checkAiLlmStatus, testAiLlm, compareSpecifications, ingestRfiDocument, askRfiCopilot, getRfiCorpusStats } from '../services/aiService.js';
+import {
+  checkAiHealth,
+  checkAiLlmStatus,
+  testAiLlm,
+  compareSpecifications,
+  ingestRfiDocument,
+  askRfiCopilot,
+  getRfiCorpusStats,
+  generateExecutiveSummary,
+} from '../services/aiService.js';
 import { ComplianceReport } from '../models/ComplianceReport.js';
 import { RFIQuery } from '../models/RFIQuery.js';
-
+import { ScheduleAnalysis } from '../models/ScheduleAnalysis.js';
+import { ExecSummary } from '../models/ExecSummary.js';
 import { AppError } from '../utils/AppError.js';
 
 export const getAiHealth = catchAsync(async (req, res) => {
@@ -57,7 +64,6 @@ export const compareSpecs = catchAsync(async (req, res, next) => {
     status: 'success',
     data: report,
   });
-
 });
 
 export const ingestRfi = catchAsync(async (req, res, next) => {
@@ -95,5 +101,39 @@ export const askRfi = catchAsync(async (req, res, next) => {
 export const getRfiStats = catchAsync(async (req, res) => {
   const data = await getRfiCorpusStats();
   res.status(200).json({ status: 'success', data });
+});
 
+/**
+ * Gathers the latest saved result from each of Modules 1-3 out of MongoDB, sends that
+ * context to the AI service for synthesis, and saves the resulting executive summary.
+ * This is the one controller that reads across multiple collections — by design, per
+ * the PRD: Module 4 does no new extraction/retrieval of its own, only aggregation.
+ */
+export const generateExecSummary = catchAsync(async (req, res) => {
+  const [latestCompliance, latestSchedule, recentRfi] = await Promise.all([
+    ComplianceReport.findOne().sort({ createdAt: -1 }),
+    ScheduleAnalysis.findOne().sort({ createdAt: -1 }),
+    RFIQuery.find().sort({ createdAt: -1 }).limit(5),
+  ]);
+
+  const payload = {
+    compliance_summary: latestCompliance?.summary || null,
+    compliance_flag_count: latestCompliance?.parameters?.filter((p) => p.status !== 'pass').length || 0,
+    schedule_summary: latestSchedule?.summary || null,
+    schedule_overall_risk: latestSchedule?.overallProjectRisk || null,
+    recent_rfi_questions: recentRfi.map((q) => q.question),
+  };
+
+  const data = await generateExecutiveSummary(payload);
+
+  const saved = await ExecSummary.create({
+    overallStatus: data.overall_status,
+    headline: data.headline,
+    topRisks: data.top_risks,
+    recommendedActions: data.recommended_actions,
+    fullSummary: data.full_summary,
+    source: data.source || 'live_llm',
+  });
+
+  res.status(201).json({ status: 'success', data: saved });
 });

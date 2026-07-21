@@ -74,9 +74,6 @@ class ScheduleRiskResponse(BaseModel):
     flagged_tasks: int
     overall_project_risk: str = Field(..., description="'low', 'medium', 'high', or 'critical'")
     summary: str
-<<<<<<< HEAD
-    ranked_risks: list[TaskRiskAssessment] = Field(..., description="At-risk tasks, ranked highest risk first")
-=======
     ranked_risks: list[TaskRiskAssessment] = Field(..., description="At-risk tasks, ranked highest risk first")
 
 
@@ -98,4 +95,20 @@ class RFIAskResponse(BaseModel):
     answer: str
     citations: list[RFICitation]
     source: str = Field(default="live_llm")
->>>>>>> d243e42 (RAG pipeline sorted)
+
+
+class ExecSummaryRequest(BaseModel):
+    compliance_summary: str | None = Field(default=None, description="Latest Spec Compliance Agent summary text")
+    compliance_flag_count: int = Field(default=0)
+    schedule_summary: str | None = Field(default=None, description="Latest Schedule Risk Radar summary text")
+    schedule_overall_risk: str | None = Field(default=None)
+    recent_rfi_questions: list[str] = Field(default_factory=list, description="Recent RFI Copilot questions asked, for context")
+
+
+class ExecSummaryResponse(BaseModel):
+    overall_status: str = Field(..., description="'on_track', 'at_risk', or 'critical'")
+    headline: str = Field(..., description="One-sentence project pulse")
+    top_risks: list[str] = Field(..., description="Top 3 risks/flags across all modules, plain language")
+    recommended_actions: list[str] = Field(..., description="2-4 concrete next actions for the project manager")
+    full_summary: str = Field(..., description="Full paragraph synthesis, for the dashboard card")
+    source: str = Field(default="live_llm")
