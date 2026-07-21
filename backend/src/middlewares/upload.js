@@ -6,9 +6,6 @@ const storage = multer.memoryStorage();
 
 // File filter: accept only PDF and Word (.docx, .doc) files
 const fileFilter = (req, file, cb) => {
-   console.log(file.originalname);
-  console.log(file.mimetype);
-
   const allowedMimeTypes = [
     'application/pdf',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
