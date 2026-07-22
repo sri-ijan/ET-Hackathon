@@ -4,101 +4,153 @@ import StatusBadge from "./StatusBadge";
 function ComparisonTable({ parameters = [], onViewEvidence, onGenerateRfi }) {
   if (!parameters || parameters.length === 0) {
     return (
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-12 text-center text-slate-400">
-        No comparison parameters to display. Upload a specification and vendor submittal above to audit compliance.
+      <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-12 text-center">
+        <h3 className="text-xl font-semibold text-slate-800 dark:text-white">
+          No Compliance Report Yet
+        </h3>
+
+        <p className="mt-3 text-slate-500 dark:text-slate-400">
+          Upload a Specification and Vendor Submittal to generate the AI audit.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-300">
-      <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+    <div className="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm">
+      {/* Header */}
+
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-8 py-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
             Compliance Audit Report
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Side-by-side comparison of engineering parameter specifications and vendor submittal values.
+
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Side-by-side comparison of engineering specifications and vendor
+            submitted values.
           </p>
         </div>
-        <span className="bg-blue-50 text-blue-700 border border-blue-200 px-3.5 py-1 rounded-full text-xs font-semibold">
+
+        <span className="rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700 px-4 py-2 text-xs font-semibold text-blue-700 dark:text-blue-300">
           {parameters.length} Parameters Audited
         </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Parameter</th>
-              <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Governing Specification</th>
-              <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Vendor Submittal</th>
-              <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-              <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Deviation Reason</th>
-              <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Document References</th>
-              <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Actions</th>
+        <table className="min-w-full border-collapse">
+          <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800">
+            <tr className="border-b border-slate-200 dark:border-slate-700">
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Parameter
+              </th>
+
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Governing Specification
+              </th>
+
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Vendor Submittal
+              </th>
+
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Status
+              </th>
+
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Deviation Reason
+              </th>
+
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Document References
+              </th>
+
+              <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                Actions
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
             {parameters.map((p, index) => {
-              const isFailedOrFlagged = ["fail", "flagged"].includes((p.status || "").toLowerCase());
+              const isFailedOrFlagged = ["fail", "flagged"].includes(
+                (p.status || "").toLowerCase(),
+              );
+
               return (
                 <tr
                   key={p._id || index}
                   onClick={() => onViewEvidence?.(p)}
-                  className="hover:bg-slate-50/40 transition-colors cursor-pointer"
-                  title="Click to view AI evidence"
+                  className="cursor-pointer transition hover:bg-blue-50 dark:hover:bg-slate-800"
                 >
-                  <td className="p-5 font-semibold text-slate-800 align-top">
+                  <td className="px-5 py-5 font-semibold text-slate-900 dark:text-white align-top">
                     {p.parameterName}
                   </td>
-                  <td className="p-5 text-slate-700 font-mono text-sm align-top whitespace-pre-line">
+
+                  <td className="px-5 py-5 font-mono text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line align-top">
                     {p.specificationValue}
                   </td>
-                  <td className="p-5 text-slate-700 font-mono text-sm align-top whitespace-pre-line">
+
+                  <td className="px-5 py-5 font-mono text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line align-top">
                     {p.submittalValue}
                   </td>
-                  <td className="p-5 align-top">
+
+                  <td className="px-5 py-5 align-top">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onViewEvidence?.(p);
                       }}
-                      className="inline-flex items-center gap-1.5 hover:opacity-75 transition"
-                      title="View AI evidence for this status"
+                      className="hover:opacity-80 transition"
                     >
                       <StatusBadge status={p.status} />
                     </button>
                   </td>
-                  <td className="p-5 text-slate-500 text-sm align-top max-w-xs whitespace-pre-line">
-                    {p.deviationReason || (
-                      <span className="text-slate-300 italic">No deviation detected</span>
+
+                  <td className="px-5 py-5 max-w-xs whitespace-pre-line text-sm text-slate-600 dark:text-slate-300 align-top">
+                    {p.deviationReason ? (
+                      p.deviationReason
+                    ) : (
+                      <span className="italic text-slate-400 dark:text-slate-500">
+                        No deviation detected
+                      </span>
                     )}
                   </td>
-                  <td className="p-5 text-slate-400 text-xs font-medium align-top leading-relaxed">
-                    <div className="flex flex-col gap-1">
-                      <span className="truncate max-w-[180px]">
-                        <strong className="text-slate-500">Spec:</strong> {p.locationInSpec || "N/A"}
-                      </span>
-                      <span className="truncate max-w-[180px]">
-                        <strong className="text-slate-500">Submittal:</strong> {p.locationInSubmittal || "N/A"}
-                      </span>
+
+                  <td className="px-5 py-5 text-sm align-top">
+                    <div className="space-y-2">
+                      <p className="text-slate-600 dark:text-slate-300">
+                        <span className="font-semibold text-slate-800 dark:text-white">
+                          Spec:
+                        </span>{" "}
+                        {p.locationInSpec || "N/A"}
+                      </p>
+
+                      <p className="text-slate-600 dark:text-slate-300">
+                        <span className="font-semibold text-slate-800 dark:text-white">
+                          Submittal:
+                        </span>{" "}
+                        {p.locationInSubmittal || "N/A"}
+                      </p>
                     </div>
                   </td>
-                  <td className="p-5 align-top">
+
+                  <td className="px-5 py-5 align-top">
                     {isFailedOrFlagged ? (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onGenerateRfi?.(p);
                         }}
-                        className="inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition whitespace-nowrap"
+                        className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
                       >
-                        <Sparkles size={14} />
+                        <Sparkles size={15} />
                         Generate RFI
                       </button>
                     ) : (
-                      <span className="text-slate-300 text-xs italic">—</span>
+                      <span className="text-slate-400 dark:text-slate-500">
+                        —
+                      </span>
                     )}
                   </td>
                 </tr>

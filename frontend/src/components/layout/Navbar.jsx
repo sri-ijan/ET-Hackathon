@@ -1,100 +1,169 @@
-import { useState, useEffect } from "react";
+import { Moon, Sun, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import { Bell, Search, ChevronDown } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
-const POLL_INTERVAL_MS = 15000; // recheck every 15s — cheap call, keeps the badge honest through a demo
 
 function Navbar() {
-  // 'checking' | 'connected' | 'disconnected'
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem("theme") === "dark";
+  });
+
   const [aiStatus, setAiStatus] = useState("checking");
 
   useEffect(() => {
-    let cancelled = false;
+    const root = document.documentElement;
 
-    const checkHealth = async () => {
-      try {
-        await axios.get(`${API_BASE_URL}/ai/health`, { timeout: 5000 });
-        if (!cancelled) setAiStatus("connected");
-      } catch {
-        if (!cancelled) setAiStatus("disconnected");
-      }
-    };
+    if (darkMode) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [darkMode]);
 
-    checkHealth();
-    const interval = setInterval(checkHealth, POLL_INTERVAL_MS);
+  useEffect(() => {
+    const fetchHealth = async () => {
+  try {
+    const { data } = await axios.get("/api/v1/health");
 
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
+    console.log("Health Response:", data);
+
+    if (data?.data?.ai) {
+      setAiStatus("connected");
+    } else {
+      setAiStatus("offline");
+    }
+  } catch (err) {
+    console.log("Health Error:", err);
+    setAiStatus("offline");
+  }
+};
+
+    fetchHealth();
   }, []);
 
-  const statusStyles = {
-    checking: "bg-slate-100 text-slate-500",
-    connected: "bg-green-100 text-green-700",
-    disconnected: "bg-red-100 text-red-700",
+  const statusConfig = {
+    checking: {
+      text: "Checking...",
+      dot: "bg-yellow-500",
+      border: "border-yellow-200 dark:border-yellow-900",
+      bg: "bg-yellow-50 dark:bg-yellow-950/40",
+      label: "text-yellow-700 dark:text-yellow-400",
+    },
+    connected: {
+      text: "Connected",
+      dot: "bg-green-500",
+      border: "border-green-200 dark:border-green-900",
+      bg: "bg-green-50 dark:bg-green-950/40",
+      label: "text-green-700 dark:text-green-400",
+    },
+    offline: {
+      text: "Offline",
+      dot: "bg-red-500",
+      border: "border-red-200 dark:border-red-900",
+      bg: "bg-red-50 dark:bg-red-950/40",
+      label: "text-red-700 dark:text-red-400",
+    },
   };
 
-  const statusDot = {
-    checking: "bg-slate-400 animate-pulse",
-    connected: "bg-green-500",
-    disconnected: "bg-red-500",
-  };
-
-  const statusLabel = {
-    checking: "Checking AI...",
-    connected: "AI Connected",
-    disconnected: "AI Disconnected",
-  };
+  const current = statusConfig[aiStatus];
 
   return (
-    <header className="sticky top-0 z-40 h-20 bg-white/90 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">
-          AI Intelligence Platform
-        </h1>
-        <p className="text-sm text-slate-500">
-          Data Centre EPC Delivery
-        </p>
-      </div>
+    <header className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center justify-between px-8 py-5">
 
-      <div className="flex items-center gap-5">
-        <div className="hidden lg:flex items-center bg-slate-100 rounded-xl px-4 py-2 w-80">
-          <Search size={18} className="text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="bg-transparent outline-none px-3 w-full"
-          />
-        </div>
+        {/* Left */}
 
-        <div
-          title={
-            aiStatus === "disconnected"
-              ? "Cannot reach the AI service. Check that it's running on port 8001."
-              : ""
-          }
-          className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-xl font-medium transition-colors ${statusStyles[aiStatus]}`}
+        <motion.div
+          initial={{ opacity: 0, x: -15 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
         >
-          <div className={`w-2 h-2 rounded-full ${statusDot[aiStatus]}`}></div>
-          {statusLabel[aiStatus]}
+          <p className="uppercase tracking-[0.25em] text-xs text-blue-600 font-semibold">
+            AI EPC Platform
+          </p>
+
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mt-1">
+            Engineering Intelligence
+          </h1>
+
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            AI powered document analysis & project monitoring
+          </p>
+        </motion.div>
+
+        {/* Right */}
+
+        <div className="flex items-center gap-4">
+
+          {/* AI Status */}
+
+          <motion.div
+            whileHover={{ scale: 1.04 }}
+            className={`hidden md:flex items-center gap-3 rounded-2xl px-5 py-3 border ${current.border} ${current.bg}`}
+          >
+            <span className="relative flex h-3 w-3">
+              <span
+                className={`absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping ${current.dot}`}
+              ></span>
+
+              <span
+                className={`relative inline-flex h-3 w-3 rounded-full ${current.dot}`}
+              ></span>
+            </span>
+
+            <div>
+              <p
+                className={`text-xs uppercase tracking-wider font-semibold ${current.label}`}
+              >
+                AI STATUS
+              </p>
+
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                {current.text}
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Theme Toggle */}
+
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            whileHover={{ rotate: 15 }}
+            onClick={() => setDarkMode(!darkMode)}
+            className="w-12 h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm hover:shadow-lg transition-all"
+          >
+            {darkMode ? (
+              <Sun size={20} className="text-yellow-400" />
+            ) : (
+              <Moon size={20} className="text-slate-700" />
+            )}
+          </motion.button>
+
+          {/* Logo */}
+
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-3 shadow-lg"
+          >
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+              <Sparkles className="text-white" size={22} />
+            </div>
+
+            <div className="hidden sm:block">
+              <p className="text-xs text-blue-100 uppercase tracking-wider">
+                Enterprise
+              </p>
+
+              <h2 className="text-white font-semibold">
+                @dishu0209
+              </h2>
+            </div>
+          </motion.div>
+
         </div>
 
-        <button className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-xl hover:bg-slate-200 transition">
-          Demo Project
-          <ChevronDown size={16} />
-        </button>
-
-        <button className="relative">
-          <Bell />
-          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500"></span>
-        </button>
-
-        <img
-          src="https://ui-avatars.com/api/?name=AI&background=2563eb&color=fff"
-          className="w-11 h-11 rounded-full"
-        />
       </div>
     </header>
   );
