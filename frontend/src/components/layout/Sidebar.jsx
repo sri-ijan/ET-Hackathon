@@ -4,7 +4,7 @@ import {
   CalendarClock,
   Bot,
   ClipboardList,
-  Cpu,
+  ShieldCheck,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -126,15 +126,13 @@ function Sidebar() {
             justify-center
           "
           >
-            <Cpu className="text-white" size={28} />
+            <ShieldCheck className="text-white" size={28} />
           </div>
 
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-blue-100">
-              AI Platform
-            </p>
+            
 
-            <h2 className="text-white font-bold text-lg">ET AI</h2>
+            <h2 className="text-white font-bold text-lg">AegisEPC</h2>
           </div>
         </motion.div>
       </div>

@@ -52,7 +52,7 @@ function Dashboard() {
           AI Powered EPC Platform
         </p>
 
-        <h1 className="text-5xl font-bold mt-3">Welcome Back 👋</h1>
+        <h1 className="text-5xl font-bold mt-3">Welcome Back !</h1>
 
         <p className="mt-4 text-blue-100 max-w-2xl leading-8">
           Monitor project compliance, schedule risks, RFIs and executive

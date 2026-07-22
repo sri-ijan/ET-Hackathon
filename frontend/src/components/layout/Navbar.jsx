@@ -1,4 +1,4 @@
-import { Moon, Sun, Sparkles } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -141,26 +141,7 @@ function Navbar() {
             )}
           </motion.button>
 
-          {/* Logo */}
-
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 px-5 py-3 shadow-lg"
-          >
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <Sparkles className="text-white" size={22} />
-            </div>
-
-            <div className="hidden sm:block">
-              <p className="text-xs text-blue-100 uppercase tracking-wider">
-                Enterprise
-              </p>
-
-              <h2 className="text-white font-semibold">
-                @dishu0209
-              </h2>
-            </div>
-          </motion.div>
+         
 
         </div>
 
