@@ -74,6 +74,27 @@ def _generate_rfi_number() -> str:
     return f"RFI-{year}-{random.randint(1000, 9999)}"
 
 
+def _extract_json_object(raw_text: str) -> str:
+    """
+    Defense-in-depth extraction. json_mode should already return a clean JSON
+    object on its own, but this also tolerates a stray code fence or a
+    preamble/postamble sentence some models still add around the object
+    (e.g. "Here is the RFI:\n```json\n{...}\n```\nLet me know if you need edits.").
+
+    Deliberately simple: find the first '{' and the last '}' and take everything
+    between them. Trying to parse out fences first is a trap — if there's text
+    before the fence, splitting on the first "```" discards the JSON along with
+    the preamble. Scanning for braces directly works regardless of whether
+    fences are present at all.
+    """
+    text = raw_text.strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("No JSON object found in the LLM response.")
+    return text[start : end + 1].strip()
+
+
 async def draft_rfi_from_failure(payload: RFIDraftRequest) -> RFIDraftResponse:
     if not settings.configured_providers:
         raise RuntimeError("No AI provider configured. Check your .env (GROQ_API_KEY/GEMINI_API_KEY).")
@@ -91,24 +112,32 @@ async def draft_rfi_from_failure(payload: RFIDraftRequest) -> RFIDraftResponse:
     )
 
     logger.info("Drafting RFI for parameter=%s status=%s", payload.parameter_name, payload.status)
-    result = await llm_client.generate(
-        prompt=prompt,
-        system=RFI_DRAFT_SYSTEM_PROMPT,
-        temperature=0.2,
-        max_tokens=768,
-    )
 
-    raw_text = result.text.strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text.split("```json", 1)[1]
-    if "```" in raw_text:
-        raw_text = raw_text.split("```", 1)[0]
-    raw_text = raw_text.strip()
-
-    if not raw_text.endswith("}"):
-        raise ValueError("LLM response is incomplete (truncated JSON).")
-
-    parsed = json.loads(raw_text)
+    last_parse_error: Exception | None = None
+    for attempt in (1, 2):
+        result = await llm_client.generate(
+            prompt=prompt,
+            system=RFI_DRAFT_SYSTEM_PROMPT,
+            temperature=0.2,
+            max_tokens=768,
+            json_mode=True,
+        )
+        try:
+            json_text = _extract_json_object(result.text)
+            parsed = json.loads(json_text)
+            if "body" not in parsed:
+                raise ValueError("LLM response was valid JSON but missing the required 'body' field.")
+            break
+        except (ValueError, json.JSONDecodeError) as exc:
+            last_parse_error = exc
+            logger.warning(
+                "RFI draft response was not valid JSON on attempt %d/2, %s: %s",
+                attempt,
+                "retrying" if attempt == 1 else "giving up",
+                exc,
+            )
+    else:
+        raise ValueError(f"AI returned a malformed RFI draft after 2 attempts: {last_parse_error}")
 
     priority = str(parsed.get("recommended_priority", "medium")).strip().lower()
     if priority not in ("low", "medium", "high", "critical"):

@@ -72,10 +72,19 @@ class LLMClient:
         system: str | None = None,
         temperature: float = 0.3,
         max_tokens: int = 1024,
+        json_mode: bool = False,
     ) -> LLMResult:
         """
         Generate a completion, trying providers in configured priority order.
         Raises AllProvidersFailedError only if every configured provider fails.
+
+        json_mode=True asks the provider's native structured-output mode
+        (Groq response_format=json_object / Gemini response_mime_type=application/json)
+        to constrain the raw completion to a single valid JSON object. This is far
+        more reliable than asking nicely in the prompt and then string-splitting
+        the response — free-text completions occasionally add a preamble, wrap in
+        a different fence style, or emit an unescaped newline inside a string value,
+        any of which breaks json.loads() even though the content itself was fine.
         """
         providers = settings.configured_providers
         if not providers:
@@ -86,7 +95,7 @@ class LLMClient:
         failures: list[LLMProviderError] = []
         for provider in providers:
             try:
-                return await self._call_with_retry(provider, prompt, system, temperature, max_tokens)
+                return await self._call_with_retry(provider, prompt, system, temperature, max_tokens, json_mode)
             except LLMProviderError as exc:
                 logger.warning("Provider %s failed, trying next fallback if available: %s", provider, exc)
                 failures.append(exc)
@@ -103,16 +112,17 @@ class LLMClient:
         system: str | None,
         temperature: float,
         max_tokens: int,
+        json_mode: bool = False,
     ) -> LLMResult:
         last_error: LLMProviderError | None = None
         for attempt in range(1, settings.llm_max_retries_per_provider + 1):
             start = time.monotonic()
             try:
                 if provider == "groq":
-                    text = await asyncio.to_thread(self._call_groq, prompt, system, temperature, max_tokens)
+                    text = await asyncio.to_thread(self._call_groq, prompt, system, temperature, max_tokens, json_mode)
                     model = settings.groq_model
                 else:
-                    text = await asyncio.to_thread(self._call_gemini, prompt, system, temperature, max_tokens)
+                    text = await asyncio.to_thread(self._call_gemini, prompt, system, temperature, max_tokens, json_mode)
                     model = settings.gemini_model
 
                 latency_ms = int((time.monotonic() - start) * 1000)
@@ -132,23 +142,33 @@ class LLMClient:
 
         raise last_error  # type: ignore[misc]
 
-    def _call_groq(self, prompt: str, system: str | None, temperature: float, max_tokens: int) -> str:
+    def _call_groq(
+        self, prompt: str, system: str | None, temperature: float, max_tokens: int, json_mode: bool = False
+    ) -> str:
         client = self._get_groq()
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        response = client.chat.completions.create(
+        kwargs = dict(
             model=settings.groq_model,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
             timeout=settings.llm_request_timeout_seconds,
         )
+        if json_mode:
+            # Groq (OpenAI-compatible) requires the literal word "JSON" to appear
+            # somewhere in the messages when this is set — our prompts always do.
+            kwargs["response_format"] = {"type": "json_object"}
+
+        response = client.chat.completions.create(**kwargs)
         return response.choices[0].message.content
 
-    def _call_gemini(self, prompt: str, system: str | None, temperature: float, max_tokens: int) -> str:
+    def _call_gemini(
+        self, prompt: str, system: str | None, temperature: float, max_tokens: int, json_mode: bool = False
+    ) -> str:
         from google.genai import types
 
         client = self._get_gemini()
@@ -156,6 +176,7 @@ class LLMClient:
             temperature=temperature,
             max_output_tokens=max_tokens,
             system_instruction=system if system else None,
+            response_mime_type="application/json" if json_mode else None,
         )
         response = client.models.generate_content(
             model=settings.gemini_model,
