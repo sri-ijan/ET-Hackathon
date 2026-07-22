@@ -9,10 +9,11 @@ import {
   askRfi,
   getRfiStats,
   generateExecSummary,
+  generateRfi,
 } from "../controllers/ai.js";
 
 import { validate } from "../middlewares/validate.js";
-import { llmTestSchema } from "../validators/aiValidator.js";
+import { llmTestSchema, generateRfiSchema } from "../validators/aiValidator.js";
 
 import {
   uploadComplianceDocuments,
@@ -31,6 +32,7 @@ router.post("/llm-test", validate(llmTestSchema), postAiLlmTest);
 router.post("/compare-specs", uploadComplianceDocuments, compareSpecs);
 
 // RFI Copilot
+router.post("/rfi/generate-from-failure", validate(generateRfiSchema), generateRfi);
 router.post("/rfi/ingest", uploadRfiDocument, ingestRfi);
 router.post("/rfi/ask", uploadRfiQuestion, askRfi);
 router.get("/rfi/stats", getRfiStats);

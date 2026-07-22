@@ -3,10 +3,11 @@ import logging
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.agents.rfi_copilot_agent import answer_question, ingest_document
+from app.agents.rfi_draft_agent import draft_rfi_from_failure
 from app.core.exceptions import LLMProviderError
 from app.ingestion.extractor import extract_text
 from app.rag import vector_store
-from app.schemas.common import RFIAskResponse, RFIIngestResponse
+from app.schemas.common import RFIAskResponse, RFIDraftRequest, RFIDraftResponse, RFIIngestResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rfi-copilot", tags=["rfi-copilot"])
@@ -49,3 +50,22 @@ async def ask(question: str = Form(..., description="Natural-language question a
     except Exception as exc:
         logger.error("RFI question answering failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"RFI Copilot failed to answer: {str(exc)}")
+
+
+@router.post("/generate-from-failure", response_model=RFIDraftResponse)
+async def generate_from_failure(payload: RFIDraftRequest) -> RFIDraftResponse:
+    """
+    Drafts a formal RFI from a single failed/flagged parameter out of a
+    Spec Compliance audit (Module 1). Live LLM call — no template fallback.
+    """
+    if payload.status.strip().lower() not in ("fail", "flagged"):
+        raise HTTPException(status_code=400, detail="An RFI can only be generated for a 'fail' or 'flagged' parameter.")
+    try:
+        return await draft_rfi_from_failure(payload)
+    except LLMProviderError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except ValueError as val_err:
+        raise HTTPException(status_code=502, detail=f"AI service returned a malformed RFI draft: {val_err}")
+    except Exception as exc:
+        logger.error("RFI generation from failure failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"RFI generation failed: {str(exc)}")

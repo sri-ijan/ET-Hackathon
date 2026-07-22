@@ -97,6 +97,26 @@ class RFIAskResponse(BaseModel):
     source: str = Field(default="live_llm")
 
 
+class RFIDraftRequest(BaseModel):
+    parameter_name: str = Field(..., description="Name of the failed/flagged parameter, e.g. 'Rated Capacity'")
+    specification_value: str = Field(..., description="Value required in the governing specification")
+    submittal_value: str = Field(..., description="Value actually offered in the vendor submittal")
+    status: str = Field(..., description="'fail' or 'flagged'")
+    deviation_reason: str | None = Field(default=None, description="AI-generated deviation reason from the compliance audit")
+    location_in_spec: str | None = Field(default=None)
+    location_in_submittal: str | None = Field(default=None)
+    specification_file_name: str | None = Field(default=None, description="Original filename of the spec document, for the RFI header")
+    submittal_file_name: str | None = Field(default=None, description="Original filename of the submittal document, for the RFI header")
+
+
+class RFIDraftResponse(BaseModel):
+    rfi_number: str = Field(..., description="Generated reference number, e.g. RFI-2026-0417")
+    subject: str = Field(..., description="Short one-line subject of the RFI")
+    body: str = Field(..., description="Full formal RFI body text, ready to paste into an email or RFI form")
+    recommended_priority: str = Field(..., description="'low', 'medium', 'high', or 'critical'")
+    source: str = Field(default="live_llm")
+
+
 class ExecSummaryRequest(BaseModel):
     compliance_summary: str | None = Field(default=None, description="Latest Spec Compliance Agent summary text")
     compliance_flag_count: int = Field(default=0)

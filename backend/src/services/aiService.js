@@ -180,6 +180,26 @@ export const compareSpecifications = async (specFile, submittalFile) => {
 };
 
 /**
+ * Sends a single failed/flagged compliance parameter to the AI service, which drafts
+ * a formal RFI around that specific deviation via a live LLM call.
+ * @param {Object} payload - { parameter_name, specification_value, submittal_value, status,
+ *   deviation_reason, location_in_spec, location_in_submittal, specification_file_name, submittal_file_name }
+ */
+export const generateRfiFromFailure = async (payload) => {
+  try {
+    const { data } = await aiClient.post('/rfi-copilot/generate-from-failure', payload);
+    return data;
+  } catch (err) {
+    if (err.response) {
+      logger.error(`AI service /rfi-copilot/generate-from-failure failed: ${JSON.stringify(err.response.data)}`);
+      throw new AppError(err.response.data?.detail || 'AI service rejected the RFI generation request.', err.response.status);
+    }
+    logger.error(`AI service unreachable for RFI generation: ${err.message}`);
+    throw new AppError('AI service is unreachable. Is it running on ' + env.AI_SERVICE_URL + '?', 502);
+  }
+};
+
+/**
  * Forwards a document to the AI service's RFI corpus (chunk + embed + store in Chroma).
  * No mock fallback here — ingestion either works or fails loudly. Silently pretending
  * to ingest a document that never actually got embedded would corrupt the demo corpus

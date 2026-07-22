@@ -12,6 +12,8 @@ import {
 
 import UploadBox from "../components/common/UploadBox";
 import ComparisonTable from "../components/spec/ComparisonTable";
+import EvidenceDrawer from "../components/spec/EvidenceDrawer";
+import GenerateRFIModal from "../components/spec/GenerateRFIModal";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
@@ -21,6 +23,14 @@ function SpecCompliance() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [report, setReport] = useState(null);
+  const [evidenceParameter, setEvidenceParameter] = useState(null);
+  const [rfiParameter, setRfiParameter] = useState(null);
+
+  const handleGenerateRfi = (parameter) => {
+    // Close the evidence drawer (if open) and open the RFI modal for this parameter.
+    setEvidenceParameter(null);
+    setRfiParameter(parameter);
+  };
 
   const handleCompare = async () => {
     if (!specificationFile || !submittalFile) {
@@ -208,7 +218,27 @@ function SpecCompliance() {
       )}
 
       {/* Results Table */}
-      <ComparisonTable parameters={report?.parameters} />
+      <ComparisonTable
+        parameters={report?.parameters}
+        onViewEvidence={setEvidenceParameter}
+        onGenerateRfi={handleGenerateRfi}
+      />
+
+      {/* AI Evidence drawer — opens when a parameter row/status is clicked */}
+      <EvidenceDrawer
+        parameter={evidenceParameter}
+        onClose={() => setEvidenceParameter(null)}
+        onGenerateRfi={handleGenerateRfi}
+      />
+
+      {/* Generate RFI modal — real LLM call drafting an RFI from the failure */}
+      <GenerateRFIModal
+        parameter={rfiParameter}
+        complianceReportId={report?._id}
+        specFileName={report?.specificationFileName}
+        submittalFileName={report?.submittalFileName}
+        onClose={() => setRfiParameter(null)}
+      />
     </div>
   );
 }

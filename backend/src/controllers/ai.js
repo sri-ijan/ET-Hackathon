@@ -8,9 +8,11 @@ import {
   askRfiCopilot,
   getRfiCorpusStats,
   generateExecutiveSummary,
+  generateRfiFromFailure,
 } from '../services/aiService.js';
 import { ComplianceReport } from '../models/ComplianceReport.js';
 import { RFIQuery } from '../models/RFIQuery.js';
+import { GeneratedRFI } from '../models/GeneratedRFI.js';
 import { ScheduleAnalysis } from '../models/ScheduleAnalysis.js';
 import { ExecSummary } from '../models/ExecSummary.js';
 import { AppError } from '../utils/AppError.js';
@@ -64,6 +66,69 @@ export const compareSpecs = catchAsync(async (req, res, next) => {
     status: 'success',
     data: report,
   });
+});
+
+/**
+ * Drafts a formal RFI from a single failed/flagged parameter of a Spec Compliance
+ * audit (Module 1), via a live LLM call to the AI service, and persists the result.
+ */
+export const generateRfi = catchAsync(async (req, res, next) => {
+  const {
+    complianceReportId,
+    parameterName,
+    specificationValue,
+    submittalValue,
+    status,
+    deviationReason,
+    locationInSpec,
+    locationInSubmittal,
+    specificationFileName,
+    submittalFileName,
+  } = req.body;
+
+  // If a report id is given, pull the original document filenames from it so the
+  // AI service can reference them in the RFI, even if the frontend didn't send them.
+  let specFileName = specificationFileName || null;
+  let submittalFileNameResolved = submittalFileName || null;
+
+  if (complianceReportId) {
+    const report = await ComplianceReport.findById(complianceReportId);
+    if (!report) {
+      return next(new AppError('Compliance report not found for the given complianceReportId.', 404));
+    }
+    specFileName = specFileName || report.specificationFileName;
+    submittalFileNameResolved = submittalFileNameResolved || report.submittalFileName;
+  }
+
+  const aiPayload = {
+    parameter_name: parameterName,
+    specification_value: specificationValue,
+    submittal_value: submittalValue,
+    status,
+    deviation_reason: deviationReason || null,
+    location_in_spec: locationInSpec || null,
+    location_in_submittal: locationInSubmittal || null,
+    specification_file_name: specFileName,
+    submittal_file_name: submittalFileNameResolved,
+  };
+
+  const data = await generateRfiFromFailure(aiPayload);
+
+  const saved = await GeneratedRFI.create({
+    complianceReportId: complianceReportId || undefined,
+    parameterName,
+    specificationValue,
+    submittalValue,
+    status,
+    deviationReason: deviationReason || null,
+    rfiNumber: data.rfi_number,
+    subject: data.subject,
+    body: data.body,
+    recommendedPriority: data.recommended_priority,
+    source: data.source || 'live_llm',
+  });
+
+  res.status(201).json({ status: 'success', data: saved });
 });
 
 export const ingestRfi = catchAsync(async (req, res, next) => {
